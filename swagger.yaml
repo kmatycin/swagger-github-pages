@@ -1,286 +1,105 @@
-openapi: 3.0.3
+openapi: 3.0.0
 info:
-  title: Motorsport App API
-  description: API для автоспортивной социальной сети для организаторов и зрителей
+  title: Event Manager API
   version: 1.0.0
-
 servers:
-  - url: http://localhost:8080/api
-    description: Локальный сервер
-
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
-  schemas:
-    User:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        username:
-          type: string
-        email:
-          type: string
-        role:
-          type: string
-          enum: [SPECTATOR, PILOT, ORGANIZER]
-        avatarUrl:
-          type: string
-          nullable: true
-        bio:
-          type: string
-          nullable: true
-      required:
-        - username
-        - email
-        - role
-
-    Event:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        title:
-          type: string
-        date:
-          type: string
-          format: date-time
-        location:
-          type: string
-        status:
-          type: string
-          enum: [UPCOMING, ONGOING, FINISHED]
-      required:
-        - title
-        - date
-        - location
-
-    News:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        content:
-          type: string
-        authorId:
-          type: string
-          format: uuid
-        authorName:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-      required:
-        - content
-        - authorId
-
-    LoginRequest:
-      type: object
-      properties:
-        email:
-          type: string
-        password:
-          type: string
-      required:
-        - email
-        - password
-
-    LoginResponse:
-      type: object
-      properties:
-        token:
-          type: string
-          description: JWT-токен для авторизации
-
-    Error:
-      type: object
-      properties:
-        message:
-          type: string
-        code:
-          type: integer
-
+  - url: http://localhost:8080
 paths:
-  /auth/register:
+  /api/auth/register:
     post:
-      summary: Регистрация нового пользователя
+      tags:
+        - Authentication
+      summary: Register a new user
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/User'
-            example:
-              username: "john_doe"
-              email: "john@example.com"
-              password: "password123"
-              role: "SPECTATOR"
+              $ref: '#/components/schemas/RegisterRequest'
       responses:
-        '201':
-          description: Пользователь успешно создан
+        '200':
+          description: User registered successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/BaseSuccessResponse'
         '400':
-          description: Некорректные данные
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /auth/login:
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+  /api/auth/login:
     post:
-      summary: Вход в систему
+      tags:
+        - Authentication
+      summary: Login a user
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginRequest'
-            example:
-              email: "john@example.com"
-              password: "password123"
       responses:
         '200':
-          description: Успешный вход, возвращает JWT-токен
+          description: Login successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
         '401':
-          description: Неверные учетные данные
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /events:
-    get:
-      summary: Получение списка событий
-      parameters:
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 10
-        - name: offset
-          in: query
-          schema:
-            type: integer
-            default: 0
-      responses:
-        '200':
-          description: Список событий
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  events:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Event'
-                  total:
-                    type: integer
-      security:
-        - bearerAuth: []
-
+          description: Unauthorized - Invalid credentials
+        '500':
+          description: Internal Server Error
+  /api/createEvent:
     post:
-      summary: Создание нового события (только для ORGANIZER)
+      tags:
+        - Events
+      summary: Create a new event
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Event'
-            example:
-              title: "Drift Championship 2025"
-              date: "2025-03-15T10:00:00Z"
-              location: "Moscow Raceway"
-      responses:
-        '201':
-          description: Событие создано
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Event'
-        '403':
-          description: Нет доступа
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-      security:
-        - bearerAuth: []
-
-  /news:
-    get:
-      summary: Получение ленты новостей
-      parameters:
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 10
-        - name: offset
-          in: query
-          schema:
-            type: integer
-            default: 0
+              $ref: '#/components/schemas/PreviewEventRequest'
       responses:
         '200':
-          description: Список новостей
+          description: Event created successfully
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  posts:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/News'
-                  total:
-                    type: integer
-      security:
-        - bearerAuth: []
-
-    post:
-      summary: Публикация новости (только для ORGANIZER или PILOT)
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+  /api/updateEvent:
+    put:
+      tags:
+        - Events
+      summary: Update an existing event
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/News'
-            example:
-              content: "Регистрация на чемпионат открыта!"
+              $ref: '#/components/schemas/PreviewEventRequest'
       responses:
-        '201':
-          description: Новость опубликована
+        '200':
+          description: Event updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/News'
-        '403':
-          description: Нет доступа
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-      security:
-        - bearerAuth: []
-
-  /profiles/{id}:
-    get:
-      summary: Получение профиля пользователя
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+  /api/deleteEvent/{id}:
+    delete:
+      tags:
+        - Events
+      summary: Delete an event by ID
       parameters:
         - name: id
           in: path
@@ -290,79 +109,480 @@ paths:
             format: uuid
       responses:
         '200':
-          description: Данные профиля
+          description: Event deleted successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '404':
-          description: Профиль не найден
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+  /api/getTrajectoriesAndModules:
+    get:
+      tags:
+        - Events
+      summary: Get trajectories and modules for events
+      responses:
+        '200':
+          description: Successfully retrieved trajectories and modules
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-      security:
-        - bearerAuth: []
-
-  /profiles/me:
-    put:
-      summary: Обновление собственного профиля
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '500':
+          description: Internal Server Error
+  /api/preview:
+    post:
+      tags:
+        - Events
+      summary: Preview calendar events
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/User'
-            example:
-              username: "john_doe_updated"
-              avatarUrl: "http://example.com/avatar.jpg"
-              bio: "Люблю дрифт и скорость"
+              $ref: '#/components/schemas/PreviewRequest'
       responses:
         '200':
-          description: Профиль обновлен
+          description: Successfully previewed events
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '403':
-          description: Нет доступа
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+  /api/sendEvents:
+    post:
+      tags:
+        - Events
+      summary: Send events
+      responses:
+        '200':
+          description: Events sent successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-      security:
-        - bearerAuth: []
-
-  /messenger:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '500':
+          description: Internal Server Error
+  /api/uploadTrajectory:
+    post:
+      tags:
+        - Files
+      summary: Upload a trajectory file
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: file
+          in: formData
+          required: true
+          schema:
+            type: string
+            format: binary
+      responses:
+        '200':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+  /api/createTrajectory:
+    post:
+      tags:
+        - Trajectories
+      summary: Create a new trajectory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrajectoryRequest'
+      responses:
+        '200':
+          description: Trajectory created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+  /api/trajectories:
     get:
-      summary: Заглушка для мессенджера
+      tags:
+        - Trajectories
+      summary: Get all trajectories
       responses:
         '200':
-          description: Функционал в разработке
+          description: Successfully retrieved trajectories
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "coming soon"
-      security:
-        - bearerAuth: []
-
-  /top32:
+                type: array
+                items:
+                  $ref: '#/components/schemas/String'
+        '500':
+          description: Internal Server Error
+  /api/loadTrajectory/{trajectory}:
     get:
-      summary: Заглушка для сетки топ-32
+      tags:
+        - Trajectories
+      summary: Load a specific trajectory
+      parameters:
+        - name: trajectory
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
-          description: Функционал в разработке
+          description: Successfully loaded trajectory
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: "coming soon"
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+  /api/modules/{trajectory}:
+    get:
+      tags:
+        - Trajectories
+      summary: Get modules by trajectory
+      parameters:
+        - name: trajectory
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully retrieved modules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+        '400':
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+  /api/updateTrajectory:
+    put:
+      tags:
+        - Trajectories
+      summary: Update a trajectory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrajectoryRequest'
+      responses:
+        '200':
+          description: Trajectory updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+  /api/deleteTrajectory/{trajectory}:
+    delete:
+      tags:
+        - Trajectories
+      summary: Delete a trajectory
+      parameters:
+        - name: trajectory
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Trajectory deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+  /api/profile:
+    get:
+      tags:
+        - Users
+      summary: Get user profile
       security:
         - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Unauthorized - Access denied
+        '500':
+          description: Internal Server Error
+  /api/users:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved all users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Unauthorized - Access denied
+        '500':
+          description: Internal Server Error
+  /api/update:
+    put:
+      tags:
+        - Users
+      summary: Update user profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '401':
+          description: Unauthorized - Access denied
+        '500':
+          description: Internal Server Error
+  /api/{id}/role:
+    put:
+      tags:
+        - Users
+      summary: Update user role
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleRequest'
+      responses:
+        '200':
+          description: Role updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '401':
+          description: Unauthorized - Access denied
+        '500':
+          description: Internal Server Error
+  /api/whitelist:
+    get:
+      tags:
+        - Whitelist
+      summary: Get whitelist
+      responses:
+        '200':
+          description: Successfully retrieved whitelist
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WhitelistResponse'
+        '500':
+          description: Internal Server Error
+    post:
+      tags:
+        - Whitelist
+      summary: Add email to whitelist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WhitelistRequest'
+      responses:
+        '200':
+          description: Email added to whitelist successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+    delete:
+      tags:
+        - Whitelist
+      summary: Remove email from whitelist
+      parameters:
+        - name: request
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Email removed from whitelist successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BaseSuccessResponse'
+        '400':
+          description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
+components:
+  schemas:
+    BaseSuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          anyOf:
+            - type: string
+            - type: array
+            - type: object
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        name:
+          type: string
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    PreviewEventRequest:
+      type: object
+      properties:
+        eventName:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+    PreviewRequest:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              start:
+                type: string
+              end:
+                type: string
+    WhitelistRequest:
+      type: object
+      properties:
+        email:
+          type: string
+    WhitelistResponse:
+      type: object
+      properties:
+        email:
+          type: string
+    UpdateUserRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        passwordCalendar:
+          type: string
+    RoleRequest:
+      type: object
+      properties:
+        role:
+          type: string
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+    TrajectoryRequest:
+      type: object
+      properties:
+        trajectoryName:
+          type: string
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              start:
+                type: string
+              end:
+                type: string
+securitySchemes:
+  bearerAuth:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT
