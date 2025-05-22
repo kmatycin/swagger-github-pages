@@ -1,0 +1,401 @@
+openapi: 3.0.3
+info:
+  title: Alatech Compatibility API
+  version: 1.0.0
+  description: >
+    API для регистрации компонентов ПК, сборки машин, проверки совместимости и управления деталями.
+    Все пути, кроме `login`, `logout` и получения изображений, требуют аутентификации с помощью токена.
+
+servers:
+  - url: https://xxxxx-m1.wsr.ru/alatech/api
+    description: Основной сервер (замените `xxxxx` на ваш логин)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+
+    Motherboard:
+      type: object
+      required: [id, name, imageUrl, brand, socket, ramType, ramSlots, maxTdp, sataSlots, m2Slots, pciExpressSlots]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        imageUrl: { type: string }
+        brand: { type: string }
+        socket: { type: string }
+        ramType: { type: string }
+        ramSlots: { type: integer }
+        maxTdp: { type: number }
+        sataSlots: { type: integer }
+        m2Slots: { type: integer }
+        pciExpressSlots: { type: integer }
+
+    Processor:
+      type: object
+      required: [id, name, imageUrl, brand, socket, cores, baseFrequency, maxFrequency, cache, tdp]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        imageUrl: { type: string }
+        brand: { type: string }
+        socket: { type: string }
+        cores: { type: integer }
+        baseFrequency: { type: number }
+        maxFrequency: { type: number }
+        cache: { type: number }
+        tdp: { type: number }
+
+    RamMemory:
+      type: object
+      required: [id, name, imageUrl, brand, capacity, type, frequency]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        imageUrl: { type: string }
+        brand: { type: string }
+        capacity: { type: number }
+        type: { type: string }
+        frequency: { type: number }
+
+    StorageDevice:
+      type: object
+      required: [id, name, imageUrl, brand, storageType, capacity, inputType]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        imageUrl: { type: string }
+        brand: { type: string }
+        storageType: { type: string, enum: [HDD, SSD] }
+        capacity: { type: number }
+        inputType: { type: string, enum: [SATA, M2] }
+
+    GraphicCard:
+      type: object
+      required: [id, name, imageUrl, brand, memorySize, memoryType, minPower, supportsSli]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        imageUrl: { type: string }
+        brand: { type: string }
+        memorySize: { type: number }
+        memoryType: { type: string, enum: [GDDR5, GDDR6] }
+        minPower: { type: number }
+        supportsSli: { type: boolean }
+
+    PowerSupply:
+      type: object
+      required: [id, name, imageUrl, brand, power, rating]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        imageUrl: { type: string }
+        brand: { type: string }
+        power: { type: number }
+        rating:
+          type: string
+          enum: [white, bronze, silver, gold, platinum, titanium, none]
+
+    Machine:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        imageUrl: { type: string }
+        motherboardId: { type: integer }
+        powerSupplyId: { type: integer }
+        processorId: { type: integer }
+        ramMemoryId: { type: integer }
+        ramMemoryAmount: { type: integer }
+        graphicCardId: { type: integer }
+        graphicCardAmount: { type: integer }
+        storageDevices:
+          type: array
+          items:
+            type: object
+            properties:
+              storageDeviceId: { type: integer }
+              amount: { type: integer }
+
+paths:
+  /login:
+    post:
+      summary: Вход пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+        '400':
+          description: Неверные учётные данные
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: Пользователь уже аутентифицирован
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /logout:
+    delete:
+      summary: Выход пользователя
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Успешный выход
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: Необходима аутентификация
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: Неверный токен
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /machines:
+    post:
+      summary: Создать новую машину
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Machine'
+      responses:
+        '201':
+          description: Машина создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Machine'
+        '400':
+          description: Ошибка совместимости или валидации
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: { type: string }
+        '401':
+          description: Необходима аутентификация
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: Неверный токен
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /machines/{id}:
+    put:
+      summary: Обновить существующую машину
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Machine'
+      responses:
+        '200':
+          description: Успешное обновление
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Machine' }
+        '400': &bad_request
+          description: Ошибка валидации или совместимости
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: { type: string }
+        '401': &unauthorized
+          description: Необходима аутентификация
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403': &forbidden
+          description: Неверный токен
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+    delete:
+      summary: Удалить машину
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: Успешно удалено
+        '404':
+          description: Машина не найдена
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': *unauthorized
+        '403': *forbidden
+
+  /verify-compatibility:
+    post:
+      summary: Проверить совместимость компонентов
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motherboardId, powerSupplyId]
+              properties:
+                motherboardId: { type: integer }
+                powerSupplyId: { type: integer }
+                processorId: { type: integer }
+                ramMemoryId: { type: integer }
+                ramMemoryAmount: { type: integer }
+                graphicCardId: { type: integer }
+                graphicCardAmount: { type: integer }
+                storageDevices:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      storageDeviceId: { type: integer }
+                      amount: { type: integer }
+      responses:
+        '200':
+          description: Совместимая конфигурация
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Действующая машина" }
+        '400': *bad_request
+        '401': *unauthorized
+        '403': *forbidden
+
+  /{category}:
+    get:
+      summary: Получить список компонентов по категории
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 10 }
+      responses:
+        '200':
+          description: Список компонентов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object # Динамический объект — зависит от категории
+        '401': *unauthorized
+        '403': *forbidden
+
+  /search/{category}:
+    get:
+      summary: Поиск компонентов по имени
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: category
+          required: true
+          schema: { type: string }
+        - in: query
+          name: q
+          required: true
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 10 }
+      responses:
+        '200':
+          description: Результаты поиска
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401': *unauthorized
+        '403': *forbidden
+
+  /images/{id}:
+    get:
+      summary: Получить изображение по ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Изображение
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Изображение не найдено
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
