@@ -5,6 +5,7 @@ window.onload = function() {
       { url: "swagger.yaml", name: "Основной API" },
       { url: "eventmanager.yaml", name: "Авторизация" },
       { url: "worldskills.yaml", name: "Сборка ПК" }
+      { url: "course.yaml", name : "Для курса"}
     ],
     dom_id: '#swagger-ui',
     deepLinking: true,
